@@ -4,7 +4,7 @@ import os
 
 # Configuration
 API_URL = os.getenv("API_URL", "http://localhost:8000")
-API_KEY = os.getenv("API_KEY", "su0per-secret-key")
+API_KEY = os.getenv("API_KEY", "domain-expansion-infinite-void")
 
 def ingest_sample_data():
     sample_data = {

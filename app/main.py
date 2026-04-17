@@ -1,10 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, Security
+from fastapi import FastAPI, Depends, HTTPException, Security, BackgroundTasks
 from fastapi.security.api_key import APIKeyHeader, APIKey
 from sqlalchemy.orm import Session
 from typing import List
 import os
 from . import models, schemas, database
 from .database import get_db
+from .services import ai_processor, oembed
 
 # models.Base.metadata.create_all(bind=engine)
 
@@ -68,7 +69,16 @@ def get_trend(trend_id: int, db: Session = Depends(get_db)):
 # Sources for a Trend
 @app.post("/trends/{trend_id}/sources", response_model=schemas.Source)
 def create_source(trend_id: int, source: schemas.SourceCreate, db: Session = Depends(get_db), api_key: APIKey = Depends(get_api_key)):
-    db_source = models.Source(**source.dict(), trend_id=trend_id)
+    # Automatically get oEmbed HTML if not provided
+    embed_html = source.embed_html
+    if not embed_html:
+        embed_html = oembed.get_oembed_html(source.url)
+        
+    db_source = models.Source(
+        **source.dict(exclude={"embed_html"}),
+        trend_id=trend_id,
+        embed_html=embed_html
+    )
     db.add(db_source)
     db.commit()
     db.refresh(db_source)
@@ -76,9 +86,18 @@ def create_source(trend_id: int, source: schemas.SourceCreate, db: Session = Dep
 
 # Raw Data Ingestion
 @app.post("/ingest/raw", response_model=schemas.RawData)
-def ingest_raw_data(raw_data: schemas.RawDataCreate, db: Session = Depends(get_db), api_key: APIKey = Depends(get_api_key)):
+def ingest_raw_data(
+    raw_data: schemas.RawDataCreate, 
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db), 
+    api_key: APIKey = Depends(get_api_key)
+):
     db_raw_data = models.RawData(content=raw_data.content)
     db.add(db_raw_data)
     db.commit()
     db.refresh(db_raw_data)
+    
+    # Trigger background AI processing
+    background_tasks.add_task(ai_processor.process_raw_data, db, db_raw_data.id)
+    
     return db_raw_data

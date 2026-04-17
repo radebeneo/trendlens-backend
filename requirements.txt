@@ -6,3 +6,6 @@ pydantic
 python-dotenv
 alembic
 requests
+google-genai
+langchain
+langchain-google-genai
