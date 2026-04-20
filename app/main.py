@@ -1,8 +1,13 @@
-from fastapi import FastAPI, Depends, HTTPException, Security, BackgroundTasks
+from fastapi import FastAPI, Depends, HTTPException, Security, BackgroundTasks, Request
 from fastapi.security.api_key import APIKeyHeader, APIKey
 from sqlalchemy.orm import Session
+from sqlalchemy import or_, func
 from typing import List
 import os
+from redis import asyncio as aioredis
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
+from fastapi_cache.decorator import cache
 from . import models, schemas, database
 from .database import get_db
 from .services import ai_processor, oembed
@@ -25,12 +30,19 @@ async def get_api_key(
 
 app = FastAPI(title="TrendLens API")
 
+@app.on_event("startup")
+async def startup():
+    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+    redis = aioredis.from_url(redis_url, encoding="utf8", decode_responses=True)
+    FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
+
 @app.get("/")
 def read_root():
     return {"message": "Welcome to TrendLens API"}
 
 # Categories
 @app.get("/categories", response_model=List[schemas.Category])
+@cache(expire=900)
 def get_categories(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return db.query(models.Category).offset(skip).limit(limit).all()
 
@@ -44,6 +56,7 @@ def create_category(category: schemas.CategoryCreate, db: Session = Depends(get_
 
 # Trends
 @app.get("/trends", response_model=List[schemas.Trend])
+@cache(expire=600)
 def get_trends(category_id: int = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     query = db.query(models.Trend)
     if category_id:
@@ -101,3 +114,27 @@ def ingest_raw_data(
     background_tasks.add_task(ai_processor.process_raw_data, db, db_raw_data.id)
     
     return db_raw_data
+
+# Search
+@app.get("/search", response_model=List[schemas.Trend])
+def search_trends(q: str, db: Session = Depends(get_db)):
+    """
+    Search trends using PostgreSQL Full Text Search.
+    """
+    # Simple search using ilike for non-Postgres or basic search
+    # But user specifically asked for tsvector (Full Text Search)
+    
+    # query = db.query(models.Trend).filter(
+    #     or_(
+    #         models.Trend.name.ilike(f"%{q}%"),
+    #         models.Trend.summary.ilike(f"%{q}%")
+    #     )
+    # )
+    
+    # PostgreSQL native Full Text Search
+    search_query = func.to_tsquery('english', q.replace(' ', ' & '))
+    query = db.query(models.Trend).filter(
+        func.to_tsvector('english', models.Trend.name + ' ' + models.Trend.summary).op('@@')(search_query)
+    )
+    
+    return query.limit(50).all()

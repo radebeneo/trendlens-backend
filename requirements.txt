@@ -9,3 +9,11 @@ requests
 google-genai
 langchain
 langchain-google-genai
+redis
+fastapi-cache2[redis]
+scrapy
+beautifulsoup4
+newsapi
+newsapi-python
+praw
+
