@@ -65,7 +65,7 @@ class NewsScraper:
 
     def scrape_reddit_community(self, subreddit="popular"):
         """
-        Scrapes Reddit communities via backdoor, using their publicJSON endpoints
+        Scrapes Reddit communities via backdoor, using their public JSON endpoints
         """
         url = f"https://www.reddit.com/r/{subreddit}/hot.json?limit=10"
         # Reddit strictly requires a custom User-Agent to avoid rate limiting
@@ -95,6 +95,79 @@ class NewsScraper:
         except Exception as e:
             print(f"Error scraping Reddit: {e}")
             return None
+
+    def scrape_yomzansi(self):
+        """
+        Scrapes the latest culture, sneaker, and music news from Yomzansi.
+        Great for capturing South African/African youth trends.
+        """
+
+        url = "https://www.yomzansi.com/"
+
+        try:
+            response = requests.get(url, headers=self.headers)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, 'html.parser')
+
+            stories = []
+            # Yomzansi typically uses standard Word-Press article markup
+            for article in soup.select('article')[:10]:
+                title_node = article.select_one('.entry-title a, h2 a, h3 a')
+                if title_node:
+                    title = title_node.text.strip()
+                    link =title_node.get('href')
+
+                    if title and link:
+                        stories.append({
+                            "title": title,
+                            "url": link,
+                            "source": "Yomzansi"
+                        })
+
+            return{
+                "source": "Yomzansi",
+                "scraped_at": datetime.utcnow().isoformat(),
+                "data": stories
+            }
+        except Exception as e:
+            print(f"Error scraping Yomzansi: {e}")
+            return None
+
+    def scrape_culture_mag(self, name, url, selector):
+        """
+        A generic scraper for standard digital magazines (like Freshmenmag, Hypebeast, etc.)
+        Pass target URL and CSS selector for the article headlines.
+        """
+
+        try:
+            response = requests.get(url, headers=self.headers, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, 'html.parser')
+
+            stories = []
+
+            for item in soup.select(selector)[:10]:
+                # Find the first anchor tag within the selected element
+                link_node = item if item.name == 'a' else item.select_one('a')
+                if link_node and link_node.get('href'):
+                    title = link_node.text.strip() or item.text.strip()
+                    if title:
+                        stories.append({
+                            "title": title,
+                            "url": link_node['href'],
+                            "source": name
+                        })
+
+            return {
+                "source": name,
+                "scraped_at": datetime.utcnow().isoformat(),
+                "data": stories
+            }
+
+        except Exception as e:
+            print(f"Error scraping {name}: {e}")
+            return None
+
 
 if __name__ == "__main__":
     scraper = NewsScraper()
