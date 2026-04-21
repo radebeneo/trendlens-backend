@@ -63,6 +63,22 @@ def run_all_scrapers():
     youtube_data = api_fetchers.fetch_youtube_trends()
     if youtube_data:
         ingest_data(youtube_data)
+
+
+    # 3. Culture & Lifestyle Scrapers
+    print("Running Culture & Lifestyle scrapers...")
+    yomzansi_data = news_scraper.scrape_yomzansi()
+    if yomzansi_data:
+        ingest_data(yomzansi_data)
+
+    # Using the generic method for Freshmenmag (Standard Word-Press selector)
+    freshmen_data = news_scraper.scrape_culture_mag(
+        "Freshmenmag",
+        "https://freshmenmag.co.za/",
+        "h3.entry-title"
+    )
+    if freshmen_data:
+        ingest_data(freshmen_data)
         
     print("Ingestion Job Completed.")
 
