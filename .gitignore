@@ -29,3 +29,6 @@ env/
 dist/
 build/
 *.egg-info/
+
+# masOS auto-generated files/folders
+*.DS_Store

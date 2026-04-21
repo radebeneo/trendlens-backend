@@ -52,9 +52,9 @@ def run_all_scrapers():
     if news_api_data:
         ingest_data(news_api_data)
         
-    reddit_data = api_fetchers.fetch_reddit_trends()
-    if reddit_data:
-        ingest_data(reddit_data)
+    youtube_data = api_fetchers.fetch_youtube_trends()
+    if youtube_data:
+        ingest_data(youtube_data)
         
     print("Ingestion Job Completed.")
 

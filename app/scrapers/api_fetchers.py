@@ -1,17 +1,15 @@
 import os
 from newsapi import NewsApiClient
-import praw
+from googleapiclient.discovery import build
 from datetime import datetime
 
 class APIFetchers:
     """
-    Fetchers for official APIs (NewsAPI, Reddit).
+    Fetchers for official APIs (NewsAPI, YouTube).
     """
     def __init__(self):
         self.news_api_key = os.getenv("NEWS_API_KEY")
-        self.reddit_client_id = os.getenv("REDDIT_CLIENT_ID")
-        self.reddit_client_secret = os.getenv("REDDIT_CLIENT_SECRET")
-        self.reddit_user_agent = os.getenv("REDDIT_USER_AGENT", "TrendLens/0.1")
+        self.youtube_api_key = os.getenv("YOUTUBE_API_KEY")
 
     def fetch_trending_news(self, category='technology'):
         """
@@ -44,39 +42,42 @@ class APIFetchers:
             print(f"Error fetching from NewsAPI: {e}")
             return None
 
-    def fetch_reddit_trends(self, subreddit='popular'):
+    def fetch_youtube_trends(self, region_code='US', max_results=10):
         """
-        Fetches trending posts from a subreddit using PRAW.
+        Fetches trending videos using YouTube Data API v3.
         """
-        if not self.reddit_client_id or not self.reddit_client_secret:
-            print("Reddit API credentials not found in environment.")
+        if not self.youtube_api_key:
+            print("YOUTUBE_API_KEY not found in environment.")
             return None
         
         try:
-            reddit = praw.Reddit(
-                client_id=self.reddit_client_id,
-                client_secret=self.reddit_client_secret,
-                user_agent=self.reddit_user_agent
+            youtube = build('youtube', 'v3', developerKey=self.youtube_api_key)
+            request = youtube.videos().list(
+                part="snippet,statistics",
+                chart="mostPopular",
+                regionCode=region_code,
+                maxResults=max_results
             )
+            response = request.execute()
             
-            posts = []
-            for submission in reddit.subreddit(subreddit).hot(limit=10):
-                posts.append({
-                    "title": submission.title,
-                    "url": submission.url,
-                    "score": submission.score,
-                    "num_comments": submission.num_comments,
-                    "source": f"reddit/r/{subreddit}"
+            videos = []
+            for item in response.get('items', []):
+                videos.append({
+                    "title": item['snippet']['title'],
+                    "url": f"https://www.youtube.com/watch?v={item['id']}",
+                    "view_count": item['statistics'].get('viewCount'),
+                    "channel": item['snippet']['channelTitle'],
+                    "source": "YouTube"
                 })
             
             return {
-                "source": "Reddit",
-                "subreddit": subreddit,
+                "source": "YouTube",
+                "region": region_code,
                 "scraped_at": datetime.utcnow().isoformat(),
-                "data": posts
+                "data": videos
             }
         except Exception as e:
-            print(f"Error fetching from Reddit: {e}")
+            print(f"Error fetching from YouTube: {e}")
             return None
 
 if __name__ == "__main__":
