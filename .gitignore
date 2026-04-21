@@ -31,4 +31,4 @@ build/
 *.egg-info/
 
 # masOS auto-generated files/folders
-*.DS_Store
+.DS_Store

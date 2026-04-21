@@ -79,8 +79,18 @@ def process_raw_data(db: Session, raw_data_id: int):
         db.refresh(db_trend)
         
         # 3. Handle Sources (if any URLs are in raw data)
-        # Assuming content has a 'urls' list for this example
-        urls = content.get("urls", [])
+        # Handle multiple possible formats for URLs in raw data
+        urls = []
+        if "urls" in content: # Original expected format
+            urls = content.get("urls", [])
+        elif "video_urls" in content: # TikTok/Mock scraper
+            urls = content.get("video_urls", [])
+        elif "data" in content and isinstance(content["data"], list):
+            # NewsAPI, YouTube, HackerNews, TechCrunch
+            for item in content["data"]:
+                if isinstance(item, dict) and "url" in item:
+                    urls.append(item["url"])
+        
         for url in urls:
             embed_html = get_oembed_html(url)
             db_source = models.Source(
