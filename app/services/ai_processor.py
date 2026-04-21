@@ -8,12 +8,12 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 
 # Initialize LLM
-# Ensure GOOGLE_API_KEY is in your environment
 llm = ChatGoogleGenerativeAI(model="gemini-flash-latest", google_api_key=os.getenv("GOOGLE_API_KEY"), temperature=0)
 
 def process_raw_data(db: Session, raw_data_id: int):
     """
-    Background task to process raw scraped data.
+    Background task to process raw, scraped data.
+    Extracts MULTIPLE trends from a single batch and maps relevant sources.
     1. Fetches raw data from DB.
     2. Clusters/Analyzes content via LLM.
     3. Categorizes and creates Trend entries.
@@ -25,85 +25,103 @@ def process_raw_data(db: Session, raw_data_id: int):
 
     content = raw_item.content # This is the JSON content
 
-    # In a real scenario, you'd cluster multiple raw items.
-    # For this simplified version, we'll process each raw item as a potential trend.
-    
+    # Initial processing prompt for Gemini
+    # prompt = PromptTemplate.from_template(
+    #     """
+    #     Analyze the following raw scraped data from social media/web:
+    #     {data}
+    #
+    #     Tasks:
+    #     1. Identify the core trend or topic.
+    #     2. Write a 1-sentence summary of what it means.
+    #     3. Assign a velocity (0.0 to 100.0) based on perceived viral potential.
+    #     4. Select a category name from this list: [Tech, Gen-Z Slang, Fashion, Politics, Pop Culture, Other].
+    #
+    #     Return the result in JSON format with keys:
+    #     trend_name, summary, velocity, category_name
+    #     """
+    # )
+
     prompt = PromptTemplate.from_template(
         """
-        Analyze the following raw scraped data from social media/web:
+        You are TrendLens, an expert data analyst and cultural trend predictor.
+        Analyze the following raw scraped data payload from social media/news:
+
         {data}
-        
+
         Tasks:
-        1. Identify the core trend or topic.
-        2. Write a 1-sentence summary of what it means.
-        3. Assign a velocity (0.0 to 100.0) based on perceived viral potential.
-        4. Select a category name from this list: [Tech, Gen-Z Slang, Fashion, Politics, Pop Culture, Other].
-        
-        Return the result in JSON format with keys:
-        trend_name, summary, velocity, category_name
+        1. Identify the SINGLE most dominant and impactful trend or topic within this data batch. Ignore the noise.
+        2. Write a concise, engaging 1-sentence summary of what this trend is and why it matters right now.
+        3. Assign a velocity score (float from 0.0 to 100.0). Calculate this based on any available metrics in the data (e.g., views, likes, upvotes, rank) and its explosive cultural/news potential.
+        4. Select the most accurate category from this exact list: 
+           [Technology, Artificial Intelligence, Business, Pop Culture, Politics, Fashion, Science, Gen-Z Culture, Gaming, Other]
+
+        Format the output strictly as a JSON object with exactly these keys:
+        {{
+               trends:[ 
+                   {{
+                        "trend_name": "string (A catchy, concise name for the trend)",
+                        "summary": "string (1-sentence explanation)",
+                        "velocity": float (0.0 to 100.0),
+                        "category_name": "string (Must be from the provided list)"
+                        "relevant_urls": ["url1", "url2"]
+                    }}
+                ]
+        }}
         """
     )
     
     chain = prompt | llm | JsonOutputParser()
     
     try:
+
+        # Pass the raw JSON to Gemini
         result = chain.invoke({"data": json.dumps(content)})
+        extracted_trends = result.get("trends", [])
+
+        print(f"--- AI Extracted {len(extracted_trends)} Trends ---")
         
-        # Log the AI results
-        print(f"--- AI Processed Results ---")
-        print(f"Trend: {result.get('trend_name')}")
-        print(f"Summary: {result.get('summary')}")
-        print(f"Category: {result.get('category_name')}")
-        print(f"Velocity: {result.get('velocity')}")
-        print(f"----------------------------")
+        # Loop through every trend Gemini found
+        for trend_data in extracted_trends:
+            print(f"Processing: {trend_data.get('trend_name')}")
         
-        # 1. Handle Category
-        category_name = result.get("category_name", "Other")
-        db_category = db.query(models.Category).filter(models.Category.name == category_name).first()
-        if not db_category:
-            db_category = models.Category(name=category_name, description=f"{category_name} related trends")
-            db.add(db_category)
-            db.commit()
-            db.refresh(db_category)
-        
-        # 2. Create Trend
-        db_trend = models.Trend(
-            name=result.get("trend_name", "Unknown Trend"),
-            summary=result.get("summary", ""),
-            velocity=result.get("velocity", 0.0),
-            rank=1, # Default rank
-            category_id=db_category.id
-        )
-        db.add(db_trend)
-        db.commit()
-        db.refresh(db_trend)
-        
-        # 3. Handle Sources (if any URLs are in raw data)
-        # Handle multiple possible formats for URLs in raw data
-        urls = []
-        if "urls" in content: # Original expected format
-            urls = content.get("urls", [])
-        elif "video_urls" in content: # TikTok/Mock scraper
-            urls = content.get("video_urls", [])
-        elif "data" in content and isinstance(content["data"], list):
-            # NewsAPI, YouTube, HackerNews, TechCrunch
-            for item in content["data"]:
-                if isinstance(item, dict) and "url" in item:
-                    urls.append(item["url"])
-        
-        for url in urls:
-            embed_html = get_oembed_html(url)
-            db_source = models.Source(
-                trend_id=db_trend.id,
-                title=result.get("trend_name"),
-                url=url,
-                source_type="social",
-                embed_html=embed_html,
-                quality_score=80.0
+            # 1. Handle Category
+            category_name = result.get("category_name", "Other")
+            db_category = db.query(models.Category).filter(models.Category.name == category_name).first()
+            if not db_category:
+                db_category = models.Category(name=category_name, description=f"{category_name} related trends")
+                db.add(db_category)
+                db.commit()
+                db.refresh(db_category)
+
+            # 2. Create Trend
+            db_trend = models.Trend(
+                name=result.get("trend_name", "Unknown Trend"),
+                summary=result.get("summary", ""),
+                velocity=result.get("velocity", 0.0),
+                rank=1, # Default rank
+                category_id=db_category.id
             )
-            db.add(db_source)
-        
-        db.commit()
+            db.add(db_trend)
+            db.commit()
+            db.refresh(db_trend)
+
+            # 3. Handle Sources (Only attach URLs relevant to THIS specific trend)
+            urls = trend_data.get("relevant_urls",[])
+
+            for url in urls:
+                embed_html = get_oembed_html(url)
+                db_source = models.Source(
+                    trend_id=db_trend.id,
+                    title=trend_data.get("trend_name"),
+                    url=url,
+                    source_type="social", # In a future update, we can have the AI guess the source type
+                    embed_html=embed_html,
+                    quality_score=80.0
+                )
+                db.add(db_source)
+
+            db.commit()
         
     except Exception as e:
         print(f"Error processing AI task: {e}")
