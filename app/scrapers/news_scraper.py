@@ -63,6 +63,39 @@ class NewsScraper:
             print(f"Error scraping TechCrunch: {e}")
             return None
 
+    def scrape_reddit_community(self, subreddit="popular"):
+        """
+        Scrapes Reddit communities via backdoor, using their publicJSON endpoints
+        """
+        url = f"https://www.reddit.com/r/{subreddit}/hot.json?limit=10"
+        # Reddit strictly requires a custom User-Agent to avoid rate limiting
+        custom_headers = {"User-Agent": "TrendLens-Scraper/1.0 (Contact: admin@localhost)"}
+
+        try:
+            response = requests.get(url, headers=custom_headers)
+            response.raise_for_status()
+            data = response.json()
+
+            posts=[]
+
+            for item in data.get['data', {}]['children', []]:
+                post_data = item.get('data', {})
+                posts.append({
+                    "title": post_data.get('title'),
+                    "url": f"https://www.reddit.com{post_data.get('permalink')}",
+                    "score": post_data.get('score'),
+                    "source": f"Reddit /r/{subreddit}"
+                })
+
+            return {
+                "source": f"Reddit /r/{subreddit}",
+                "scraped_at": datetime.utcnow().isoformat(),
+                "data": posts[:10]
+            }
+        except Exception as e:
+            print(f"Error scraping Reddit: {e}")
+            return None
+
 if __name__ == "__main__":
     scraper = NewsScraper()
-    print(json.dumps(scraper.scrape_hacker_news(), indent=2))
+    print(json.dumps(scraper.scrape_reddit_community("artificial"), indent=2))

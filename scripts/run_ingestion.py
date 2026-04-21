@@ -45,6 +45,14 @@ def run_all_scrapers():
     tc_data = news_scraper.scrape_tech_crunch()
     if tc_data:
         ingest_data(tc_data)
+
+    reddit_ai = news_scraper.scrape_reddit_community("artificial")
+    if reddit_ai:
+        ingest_data(reddit_ai)
+
+    reddit_pop = news_scraper.scrape_reddit_community("popular")
+    if reddit_pop:
+        ingest_data(reddit_pop)
         
     # 2. Official API Fetchers
     print("Running API fetchers...")
