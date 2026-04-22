@@ -78,7 +78,7 @@ class NewsScraper:
 
             posts=[]
 
-            for item in data.get['data', {}]['children', []]:
+            for item in data.get('data', {}).get('children', []):
                 post_data = item.get('data', {})
                 posts.append({
                     "title": post_data.get('title'),
@@ -133,14 +133,14 @@ class NewsScraper:
             print(f"Error scraping Yomzansi: {e}")
             return None
 
-    def scrape_mag_generic(self, name, url, selector):
+    def scrape_mag_generic(self, name, url, selector, verify=True):
         """
         A generic scraper for standard digital magazines (like Freshmenmag, Hypebeast, etc.)
         Pass target URL and CSS selector for the article headlines.
         """
 
         try:
-            response = requests.get(url, headers=self.headers, timeout=10)
+            response = requests.get(url, headers=self.headers, timeout=10, verify=verify)
             response.raise_for_status()
             soup = BeautifulSoup(response.text, 'html.parser')
 
