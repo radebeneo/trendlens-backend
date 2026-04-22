@@ -87,7 +87,8 @@ def run_all_scrapers():
     cnet_data = news_scraper.scrape_mag_generic(
         name="CNET",
         url="https://www.cnet.com/",
-        selector=".c-title a, h3 a"
+        # CNET uses a different class for article titles
+        selector=".c-postCard__title a, .c-promoCard__title a, .c-title a"
     )
     if cnet_data:
         ingest_data(cnet_data)

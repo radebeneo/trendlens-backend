@@ -39,25 +39,32 @@ class NewsScraper:
     def scrape_tech_crunch(self):
         """
         Scrapes latest stories from TechCrunch.
+        Uses fallback selectors to handle potential changes in their homepage block layout.
         """
         url = "https://techcrunch.com/"
         try:
-            response = requests.get(url, headers=self.headers)
+            response = requests.get(url, headers=self.headers, timeout=10)
+            response.raise_for_status()
             soup = BeautifulSoup(response.text, 'html.parser')
             
             stories = []
-            # TechCrunch structure might vary, this is a common pattern for their post-titles
-            for post in soup.select('h2.post-block__title a'):
-                stories.append({
-                    "title": post.text.strip(),
-                    "url": post['href'],
-                    "source": "TechCrunch"
-                })
+            # TechCrunch uses multiple classes depending on the block type (hero v list)
+            selectors = 'h2.wp-block-post-title a, h3.loop-card__title a, .loop-card h3 a, h2.post-block__title a'
+
+            for post in soup.select(selectors)[:10]:
+                title = post.text.strip()
+                link = post.get('href')
+                if title and link:
+                    stories.append({
+                        "title": title,
+                        "url": link,
+                        "source": "TechCrunch"
+                    })
             
             return {
                 "source": "TechCrunch",
                 "scraped_at": datetime.utcnow().isoformat(),
-                "data": stories[:10]
+                "data": stories
             }
         except Exception as e:
             print(f"Error scraping TechCrunch: {e}")
@@ -180,18 +187,18 @@ class NewsScraper:
             soup = BeautifulSoup(response.text, 'html.parser')
 
             stories = []
-            # MyBroadband uses article tags with a title class
-            for article in soup.select('article')[:10]:
-                title_node = article.select_one('.title a, h2 a')
-                if title_node:
-                    title = title_node.text.strip()
-                    link = title_node.get('href')
-                    if title and link:
-                        stories.append({
-                            "title": title,
-                            "url": link,
-                            "source": "MyBroadband"
-                        })
+            # MyBroadband often drops the <article> tag on feed items in favor of div wrappers
+            selectors = '.news-item h2 a, .article-title a, .title a, article h2 a'
+
+            for post in soup.select(selectors)[:10]:
+                title = post.text.strip()
+                link = post.get('href')
+                if title and link:
+                    stories.append({
+                        "title": title,
+                        "url": link,
+                        "source": "MyBroadband"
+                    })
 
             return {
                 "source": "MyBroadband",
@@ -205,7 +212,7 @@ class NewsScraper:
 
     def scrape_techcentral(self):
         """
-        Scrapes top B@B tech and telecom news from techcentral.co.za
+        Scrapes top B2B tech and telecom news from techcentral.co.za
         """
         url = "https://www.techcentral.co.za/"
 
@@ -215,18 +222,18 @@ class NewsScraper:
             soup = BeautifulSoup(response.text, 'html.parser')
 
             stories = []
-            # TechCentral is a standard Word-Press site
-            for article in soup.select('article')[:10]:
-                title_node = article.select_one('.entry-title a, h3 a')
-                if title_node:
-                    title = title_node.text.strip()
-                    link = title_node.get('href')
-                    if title and link:
-                        stories.append({
-                            "title": title,
-                            "url": link,
-                            "source": "TechCentral"
-                        })
+            # TechCentral uses the JNews WP theme which has very specific title classes
+            selectors = '.jeg_post_title a, h3.entry-title a, h2.entry-title a'
+
+            for post in soup.select(selectors)[:10]:
+                title = post.text.strip()
+                link = post.get('href')
+                if title and link:
+                    stories.append({
+                        "title": title,
+                        "url": link,
+                        "source": "TechCentral"
+                    })
 
             return {
                 "source": "TechCentral",
