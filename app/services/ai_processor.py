@@ -86,7 +86,7 @@ def process_raw_data(db: Session, raw_data_id: int):
             print(f"Processing: {trend_data.get('trend_name')}")
         
             # 1. Handle Category
-            category_name = result.get("category_name", "Other")
+            category_name = trend_data.get("category_name", "Other")
             db_category = db.query(models.Category).filter(models.Category.name == category_name).first()
             if not db_category:
                 db_category = models.Category(name=category_name, description=f"{category_name} related trends")
@@ -96,9 +96,9 @@ def process_raw_data(db: Session, raw_data_id: int):
 
             # 2. Create Trend
             db_trend = models.Trend(
-                name=result.get("trend_name", "Unknown Trend"),
-                summary=result.get("summary", ""),
-                velocity=result.get("velocity", 0.0),
+                name=trend_data.get("trend_name", "Unknown Trend"),
+                summary=trend_data.get("summary", ""),
+                velocity=trend_data.get("velocity", 0.0),
                 rank=1, # Default rank
                 category_id=db_category.id
             )
