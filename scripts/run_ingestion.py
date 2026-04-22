@@ -99,14 +99,14 @@ def run_all_scrapers():
         ingest_data(yomzansi_data)
 
     # Using the generic method for Freshmenmag (Standard Word-Press selector)
-    freshmen_data = news_scraper.scrape_mag_generic(
-        name="Freshmenmag",
-        url="https://freshmenmag.co.za/",
-        selector="h3.entry-title",
-        verify=False
-    )
-    if freshmen_data:
-        ingest_data(freshmen_data)
+    # freshmen_data = news_scraper.scrape_mag_generic(
+    #     name="Freshmenmag",
+    #     url="https://freshmenmag.co.za/",
+    #     selector="h3.entry-title",
+    #     verify=False
+    # )
+    # if freshmen_data:
+    #     ingest_data(freshmen_data)
         
     print("Ingestion Job Completed.")
 
