@@ -64,15 +64,42 @@ def run_all_scrapers():
     if youtube_data:
         ingest_data(youtube_data)
 
+    # 3. South African Tech Scrapers
+    print("Running SA Tech scrapers...")
+    mybroadband_dta = news_scraper.scrape_mybroadband()
+    if mybroadband_dta:
+        ingest_data(mybroadband_dta)
 
-    # 3. Culture & Lifestyle Scrapers
+    techcentral_data = news_scraper.scrape_techcentral()
+    if techcentral_data:
+        ingest_data(techcentral_data)
+
+    # 4. Global Mainstream Tech (Using the generic method scraper)
+    print("Running Global Tech Magazine scrapers...")
+    wired_data = news_scraper.scrape_mag_generic(
+        name="WIRED",
+        url="https://www.wired.com/",
+        selector="h2, h3"
+    )
+    if wired_data:
+        ingest_data(wired_data)
+
+    cnet_data = news_scraper.scrape_mag_generic(
+        name="CNET",
+        url="https://www.cnet.com/",
+        selector=".c-title a, h3 a"
+    )
+    if cnet_data:
+        ingest_data(cnet_data)
+
+    # 5. Culture & Lifestyle Scrapers
     print("Running Culture & Lifestyle scrapers...")
     yomzansi_data = news_scraper.scrape_yomzansi()
     if yomzansi_data:
         ingest_data(yomzansi_data)
 
     # Using the generic method for Freshmenmag (Standard Word-Press selector)
-    freshmen_data = news_scraper.scrape_culture_mag(
+    freshmen_data = news_scraper.scrape_mag_generic(
         "Freshmenmag",
         "https://freshmenmag.co.za/",
         "h3.entry-title"

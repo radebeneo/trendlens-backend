@@ -133,7 +133,7 @@ class NewsScraper:
             print(f"Error scraping Yomzansi: {e}")
             return None
 
-    def scrape_culture_mag(self, name, url, selector):
+    def scrape_mag_generic(self, name, url, selector):
         """
         A generic scraper for standard digital magazines (like Freshmenmag, Hypebeast, etc.)
         Pass target URL and CSS selector for the article headlines.
@@ -167,6 +167,77 @@ class NewsScraper:
         except Exception as e:
             print(f"Error scraping {name}: {e}")
             return None
+
+    def scrape_mybroadband(self):
+        """
+        Scrapes top stories from SA's largest tech site.
+        """
+        url = "https://www.mybroadband.co.za/news/"
+
+        try:
+            response = requests.get(url, headers=self.headers, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, 'html.parser')
+
+            stories = []
+            # MyBroadband uses article tags with a title class
+            for article in soup.select('article')[:10]:
+                title_node = article.select_one('.title a, h2 a')
+                if title_node:
+                    title = title_node.text.strip()
+                    link = title_node.get('href')
+                    if title and link:
+                        stories.append({
+                            "title": title,
+                            "url": link,
+                            "source": "MyBroadband"
+                        })
+
+            return {
+                "source": "MyBroadband",
+                "scraped_at": datetime.utcnow().isoformat(),
+                "data": stories
+            }
+
+        except Exception as e:
+            print(f"Error scraping MyBroadband: {e}")
+            return None
+
+    def scrape_techcentral(self):
+        """
+        Scrapes top B@B tech and telecom news from techcentral.co.za
+        """
+        url = "https://www.techcentral.co.za/"
+
+        try:
+            response = requests.get(url, headers=self.headers, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, 'html.parser')
+
+            stories = []
+            # TechCentral is a standard Word-Press site
+            for article in soup.select('article')[:10]:
+                title_node = article.select_one('.entry-title a, h3 a')
+                if title_node:
+                    title = title_node.text.strip()
+                    link = title_node.get('href')
+                    if title and link:
+                        stories.append({
+                            "title": title,
+                            "url": link,
+                            "source": "TechCentral"
+                        })
+
+            return {
+                "source": "TechCentral",
+                "scraped_at": datetime.utcnow().isoformat(),
+                "data": stories
+            }
+
+        except Exception as e:
+            print(f"Error scraping TechCentral: {e}")
+            return None
+
 
 
 if __name__ == "__main__":
