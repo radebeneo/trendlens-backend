@@ -66,11 +66,21 @@ def run_all_scrapers():
 
     # 3. South African Tech Scrapers
     print("Running SA Tech scrapers...")
-    mybroadband_dta = news_scraper.scrape_mybroadband()
-    if mybroadband_dta:
-        ingest_data(mybroadband_dta)
+    # mybroadband_data = news_scraper.scrape_mybroadband()
+    # if mybroadband_data:
+    #     ingest_data(mybroadband_data)
 
-    techcentral_data = news_scraper.scrape_techcentral()
+    # Bypassing the frontend entirely with RSS
+    mybroadband_data = news_scraper.scrape_rss_feed("MyBroadband", "https://www.mybroadband.co.za/feed/")
+    if mybroadband_data:
+        ingest_data(mybroadband_data)
+
+    # techcentral_data = news_scraper.scrape_techcentral()
+    # if techcentral_data:
+    #     ingest_data(techcentral_data)
+
+    # Bypassing the frontend entirely with RSS
+    techcentral_data = news_scraper.scrape_rss_feed("TechCentral", "https://www.techcentral.co.za/feed/")
     if techcentral_data:
         ingest_data(techcentral_data)
 
@@ -84,12 +94,17 @@ def run_all_scrapers():
     if wired_data:
         ingest_data(wired_data)
 
-    cnet_data = news_scraper.scrape_mag_generic(
-        name="CNET",
-        url="https://www.cnet.com/",
-        # CNET uses a different class for article titles
-        selector=".c-postCard__title a, .c-promoCard__title a, .c-title a"
-    )
+    # cnet_data = news_scraper.scrape_mag_generic(
+    #     name="CNET",
+    #     url="https://www.cnet.com/",
+    #     # CNET uses a different class for article titles
+    #     selector=".c-postCard__title a, .c-promoCard__title a, .c-title a"
+    # )
+    # if cnet_data:
+    #     ingest_data(cnet_data)
+
+    # Bypassing the frontend entirely with RSS
+    cnet_data = news_scraper.scrape_rss_feed("CNET", "https://www.cnet.com/rss/news")
     if cnet_data:
         ingest_data(cnet_data)
 

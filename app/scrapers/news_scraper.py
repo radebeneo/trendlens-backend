@@ -175,75 +175,109 @@ class NewsScraper:
             print(f"Error scraping {name}: {e}")
             return None
 
-    def scrape_mybroadband(self):
-        """
-        Scrapes top stories from SA's largest tech site.
-        """
-        url = "https://www.mybroadband.co.za/news/"
+    # def scrape_mybroadband(self):
+    #     """
+    #     Scrapes top stories from SA's largest tech site.
+    #     """
+    #     url = "https://www.mybroadband.co.za/news/"
+    #
+    #     try:
+    #         response = requests.get(url, headers=self.headers, timeout=10)
+    #         response.raise_for_status()
+    #         soup = BeautifulSoup(response.text, 'html.parser')
+    #
+    #         stories = []
+    #         # MyBroadband often drops the <article> tag on feed items in favor of div wrappers
+    #         selectors = '.news-item h2 a, .article-title a, .title a, article h2 a'
+    #
+    #         for post in soup.select(selectors)[:10]:
+    #             title = post.text.strip()
+    #             link = post.get('href')
+    #             if title and link:
+    #                 stories.append({
+    #                     "title": title,
+    #                     "url": link,
+    #                     "source": "MyBroadband"
+    #                 })
+    #
+    #         return {
+    #             "source": "MyBroadband",
+    #             "scraped_at": datetime.utcnow().isoformat(),
+    #             "data": stories
+    #         }
+    #
+    #     except Exception as e:
+    #         print(f"Error scraping MyBroadband: {e}")
+    #         return None
+    #
+    # def scrape_techcentral(self):
+    #     """
+    #     Scrapes top B2B tech and telecom news from techcentral.co.za
+    #     """
+    #     url = "https://www.techcentral.co.za/"
+    #
+    #     try:
+    #         response = requests.get(url, headers=self.headers, timeout=10)
+    #         response.raise_for_status()
+    #         soup = BeautifulSoup(response.text, 'html.parser')
+    #
+    #         stories = []
+    #         # TechCentral uses the JNews WP theme which has very specific title classes
+    #         selectors = '.jeg_post_title a, h3.entry-title a, h2.entry-title a'
+    #
+    #         for post in soup.select(selectors)[:10]:
+    #             title = post.text.strip()
+    #             link = post.get('href')
+    #             if title and link:
+    #                 stories.append({
+    #                     "title": title,
+    #                     "url": link,
+    #                     "source": "TechCentral"
+    #                 })
+    #
+    #         return {
+    #             "source": "TechCentral",
+    #             "scraped_at": datetime.utcnow().isoformat(),
+    #             "data": stories
+    #         }
+    #
+    #     except Exception as e:
+    #         print(f"Error scraping TechCentral: {e}")
+    #         return None
 
+    def scrape_rss_feed(self, name, feed_url):
+        """
+        A bulletproof scraper that reads machine-friendly RSS feeds,
+        bypassing the CSS changes, bot walls, and frontend JavaScript rendering.
+        """
         try:
-            response = requests.get(url, headers=self.headers, timeout=10)
+            response = requests.get(feed_url, headers=self.headers, timeout=10)
             response.raise_for_status()
-            soup = BeautifulSoup(response.text, 'html.parser')
+            soup = BeautifulSoup(response.content, 'xml')
 
-            stories = []
-            # MyBroadband often drops the <article> tag on feed items in favor of div wrappers
-            selectors = '.news-item h2 a, .article-title a, .title a, article h2 a'
+            stories=[]
+            # RSS feeds use <item> tags instead of HTML elements
+            for item in soup.find_all('item')[:10]:
+                title = item.find('title')
+                link = item.find('link')
 
-            for post in soup.select(selectors)[:10]:
-                title = post.text.strip()
-                link = post.get('href')
                 if title and link:
                     stories.append({
-                        "title": title,
-                        "url": link,
-                        "source": "MyBroadband"
+                        "title": title.text.strip(),
+                        "url": link.text.strip(),
+                        "source": name
                     })
 
             return {
-                "source": "MyBroadband",
+                "source": name,
                 "scraped_at": datetime.utcnow().isoformat(),
                 "data": stories
             }
 
         except Exception as e:
-            print(f"Error scraping MyBroadband: {e}")
+            print(f"Error scraping RSS for {name}: {e}")
             return None
 
-    def scrape_techcentral(self):
-        """
-        Scrapes top B2B tech and telecom news from techcentral.co.za
-        """
-        url = "https://www.techcentral.co.za/"
-
-        try:
-            response = requests.get(url, headers=self.headers, timeout=10)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, 'html.parser')
-
-            stories = []
-            # TechCentral uses the JNews WP theme which has very specific title classes
-            selectors = '.jeg_post_title a, h3.entry-title a, h2.entry-title a'
-
-            for post in soup.select(selectors)[:10]:
-                title = post.text.strip()
-                link = post.get('href')
-                if title and link:
-                    stories.append({
-                        "title": title,
-                        "url": link,
-                        "source": "TechCentral"
-                    })
-
-            return {
-                "source": "TechCentral",
-                "scraped_at": datetime.utcnow().isoformat(),
-                "data": stories
-            }
-
-        except Exception as e:
-            print(f"Error scraping TechCentral: {e}")
-            return None
 
 
 
